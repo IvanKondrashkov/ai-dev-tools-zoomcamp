@@ -1,0 +1,33 @@
+databases:
+  # PostgreSQL Database
+  - name: coding-interview-db
+    databaseName: coding_interview_db
+    user: coding_interview
+    plan: free
+
+services:
+  # Backend Web Service (Docker)
+  - type: web
+    name: coding-interview-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./homework2/infra/Dockerfile.backend
+    dockerContext: ./homework2
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: coding-interview-db
+          property: connectionString
+      - key: CORS_ORIGINS
+        value: https://coding-interview-frontend.onrender.com
+
+  # Frontend (Docker)
+  - type: web
+    name: coding-interview-frontend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./homework2/infra/Dockerfile.frontend
+    dockerContext: ./homework2
+    envVars:
+      - key: VITE_API_URL
+        value: https://coding-interview-backend.onrender.com
