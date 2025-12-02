@@ -1,0 +1,70 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: coding-interview-postgres
+    environment:
+      POSTGRES_USER: coding_interview
+      POSTGRES_PASSWORD: coding_interview_password
+      POSTGRES_DB: coding_interview_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - coding_interview_postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coding_interview -d coding_interview_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: coding-interview-backend
+    environment:
+      - DATABASE_URL=postgresql://coding_interview:coding_interview_password@postgres:5432/coding_interview_db
+      - CORS_ORIGINS=http://localhost:3000,http://frontend:3000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=coding_interview
+      - POSTGRES_PASSWORD=coding_interview_password
+      - POSTGRES_DB=coding_interview_db
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../backend:/app
+    networks:
+      - app-network
+    command: sh -c "uv run python migrations.py && uv run uvicorn main:socket_app --host 0.0.0.0 --port 8000 --reload"
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: coding-interview-frontend
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    networks:
+      - app-network
+    command: npm run dev -- --host 0.0.0.0
+
+volumes:
+  coding_interview_postgres_data:
+
+networks:
+  app-network:
+    driver: bridge
+
