@@ -1,0 +1,62 @@
+# Git
+.git
+.gitignore
+.github
+
+# Documentation
+*.md
+LICENSE
+RENDER_DEPLOYMENT.md
+
+# Environment
+.env
+.env.*
+
+# Node
+node_modules
+npm-debug.log
+frontend/node_modules
+frontend/dist
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+.pytest_cache
+.coverage
+backend/__pycache__
+backend/.pytest_cache
+backend/.venv
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Test
+coverage
+.nyc_output
+
+# Infra
+infra/
+render.yaml
+
+# Scripts
+backend/build.sh
+backend/start.sh

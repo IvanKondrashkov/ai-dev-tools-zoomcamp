@@ -1,0 +1,142 @@
+openapi: 3.0.3
+info:
+  title: Coding Interview Platform API
+  description: API for collaborative coding interview platform with real-time code editing
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
+paths:
+  /api/sessions:
+    post:
+      summary: Create a new coding session
+      description: Creates a new coding session and returns the session ID
+      operationId: createSession
+      tags:
+        - Sessions
+      responses:
+        '201':
+          description: Session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/sessions/{session_id}:
+    get:
+      summary: Get session information
+      description: Retrieves information about a specific session
+      operationId: getSession
+      tags:
+        - Sessions
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: The session ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/execute:
+    post:
+      summary: Execute code
+      description: Executes code on the server. JavaScript and Python execute in the browser (client-side), while Go and Java execute on the server (server-side).
+      operationId: executeCode
+      tags:
+        - Execution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteRequest'
+      responses:
+        '200':
+          description: Code executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecuteResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    SessionResponse:
+      type: object
+      required:
+        - session_id
+      properties:
+        session_id:
+          type: string
+          description: Unique identifier for the session
+          example: "abc123def456"
+
+    ExecuteRequest:
+      type: object
+      required:
+        - code
+        - language
+      properties:
+        code:
+          type: string
+          description: The code to execute
+          example: "console.log('Hello, World!');"
+        language:
+          type: string
+          enum:
+            - javascript
+            - python
+            - go
+            - java
+          description: Programming language
+          example: "javascript"
+
+    ExecuteResponse:
+      type: object
+      properties:
+        output:
+          type: string
+          nullable: true
+          description: Output from code execution
+          example: "Hello, World!\n"
+        error:
+          type: string
+          nullable: true
+          description: Error message if execution failed
+          example: "SyntaxError: Unexpected token"
+
+    Error:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Error message
+          example: "Session not found"
+
