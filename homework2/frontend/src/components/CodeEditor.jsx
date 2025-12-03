@@ -5,18 +5,17 @@ import { executeCode } from '../utils/codeExecutor'
 import './CodeEditor.css'
 
 const CodeEditor = ({ sessionId }) => {
-  const [code, setCode] = useState(() => {
-    // Set initial code based on language
-    return '// Write your code here\n'
-  })
+  const [code, setCode] = useState('')
   const [language, setLanguage] = useState('javascript')
   const [output, setOutput] = useState('')
   const [isExecuting, setIsExecuting] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const socketRef = useRef(null)
   const editorRef = useRef(null)
 
   useEffect(() => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+    
     const socket = io(apiUrl, {
       path: '/socket.io/',
     })
@@ -27,8 +26,9 @@ const CodeEditor = ({ sessionId }) => {
 
     socket.on('code_update', (data) => {
       if (data.session_id === sessionId) {
-        setCode(data.code)
+        setCode(data.code || '// Write your code here\n')
         setLanguage(data.language || 'javascript')
+        setIsLoading(false)
       }
     })
 
@@ -37,19 +37,11 @@ const CodeEditor = ({ sessionId }) => {
         const newLanguage = data.language
         setLanguage(newLanguage)
         
-        // Update code template based on new language
-        const templates = {
-          javascript: '// Write your code here\n',
-          python: '# Write your code here\n',
-          go: 'package main\n\nimport "fmt"\n\nfunc main() {\n\t// Write your code here\n}\n',
-          java: 'public class Main {\n    public static void main(String[] args) {\n        // Write your code here\n    }\n}\n',
-        }
-        
-        // Update code to new language template
-        setCode(templates[newLanguage] || '// Write your code here\n')
-        
         // Clear output when language changes
         setOutput('')
+        
+        // Note: Don't update code here - it will be updated via code_update event
+        // if the person who changed the language also changed the code
       }
     })
 
@@ -74,9 +66,9 @@ const CodeEditor = ({ sessionId }) => {
 
   const handleLanguageChange = (e) => {
     const newLanguage = e.target.value
-    setLanguage(newLanguage)
+    const oldLanguage = language // Capture old language BEFORE updating state
     
-    // Update code template based on new language
+    // Templates for each language
     const templates = {
       javascript: '// Write your code here\n',
       python: '# Write your code here\n',
@@ -84,22 +76,40 @@ const CodeEditor = ({ sessionId }) => {
       java: 'public class Main {\n    public static void main(String[] args) {\n        // Write your code here\n    }\n}\n',
     }
     
-    // Always update code to new language template
-    setCode(templates[newLanguage] || '// Write your code here\n')
+    // Only update code if it's empty or matches the OLD language template
+    const oldTemplate = templates[oldLanguage] || '// Write your code here\n'
+    const currentCodeTrimmed = code.trim()
+    const oldTemplateTrimmed = oldTemplate.trim()
+    
+    const shouldUpdateCode = !currentCodeTrimmed || currentCodeTrimmed === oldTemplateTrimmed
+    
+    const newCode = shouldUpdateCode 
+      ? (templates[newLanguage] || '// Write your code here\n')
+      : code
+    
+    // Update language state
+    setLanguage(newLanguage)
+    
+    if (shouldUpdateCode) {
+      setCode(newCode)
+      
+      // Emit code change to other clients
+      if (socketRef.current) {
+        socketRef.current.emit('code_change', {
+          session_id: sessionId,
+          code: newCode,
+        })
+      }
+    }
     
     // Clear output when language changes
     setOutput('')
     
+    // Always emit language change
     if (socketRef.current) {
       socketRef.current.emit('language_change', {
         session_id: sessionId,
         language: newLanguage,
-      })
-      
-      // Also emit code change to sync with other clients
-      socketRef.current.emit('code_change', {
-        session_id: sessionId,
-        code: templates[newLanguage] || '// Write your code here\n',
       })
     }
   }
@@ -128,6 +138,23 @@ const CodeEditor = ({ sessionId }) => {
     const url = `${window.location.origin}/session/${sessionId}`
     navigator.clipboard.writeText(url)
     alert('Link copied to clipboard!')
+  }
+
+  if (isLoading) {
+    return (
+      <div className="code-editor-container">
+        <div className="editor-header">
+          <div className="header-left">
+            <h2>Session: {sessionId}</h2>
+          </div>
+        </div>
+        <div className="editor-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center', color: '#888' }}>
+            <div>Loading session...</div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

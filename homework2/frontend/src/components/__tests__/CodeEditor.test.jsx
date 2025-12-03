@@ -37,6 +37,22 @@ const MockedCodeEditor = ({ sessionId }) => (
 describe('CodeEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Setup socket mock to trigger code_update event
+    mockSocket.on.mockImplementation((event, callback) => {
+      if (event === 'connect') {
+        // Simulate immediate connection
+        setTimeout(() => callback(), 0)
+      } else if (event === 'code_update') {
+        // Simulate receiving session data
+        setTimeout(() => {
+          callback({
+            session_id: 'test-session-123',
+            code: '// Write your code here\n',
+            language: 'javascript'
+          })
+        }, 0)
+      }
+    })
   })
 
   afterEach(() => {
@@ -47,6 +63,12 @@ describe('CodeEditor', () => {
     await act(async () => {
       render(<MockedCodeEditor sessionId="test-session-123" />)
     })
+    
+    // Wait for loading to complete
+    await waitFor(() => {
+      expect(screen.queryByText('Loading session...')).not.toBeInTheDocument()
+    })
+    
     expect(screen.getByTestId('monaco-editor')).toBeInTheDocument()
   })
 
@@ -61,6 +83,11 @@ describe('CodeEditor', () => {
     await act(async () => {
       render(<MockedCodeEditor sessionId="test-session-123" />)
     })
+    
+    await waitFor(() => {
+      expect(screen.queryByText('Loading session...')).not.toBeInTheDocument()
+    })
+    
     const languageSelect = screen.getByRole('combobox')
     expect(languageSelect).toBeInTheDocument()
   })
@@ -69,6 +96,11 @@ describe('CodeEditor', () => {
     await act(async () => {
       render(<MockedCodeEditor sessionId="test-session-123" />)
     })
+    
+    await waitFor(() => {
+      expect(screen.queryByText('Loading session...')).not.toBeInTheDocument()
+    })
+    
     expect(screen.getByText('Run Code')).toBeInTheDocument()
   })
 
@@ -76,6 +108,11 @@ describe('CodeEditor', () => {
     await act(async () => {
       render(<MockedCodeEditor sessionId="test-session-123" />)
     })
+    
+    await waitFor(() => {
+      expect(screen.queryByText('Loading session...')).not.toBeInTheDocument()
+    })
+    
     expect(screen.getByText('Copy Link')).toBeInTheDocument()
   })
 
@@ -85,6 +122,10 @@ describe('CodeEditor', () => {
 
     await act(async () => {
       render(<MockedCodeEditor sessionId="test-session-123" />)
+    })
+    
+    await waitFor(() => {
+      expect(screen.queryByText('Loading session...')).not.toBeInTheDocument()
     })
     
     const runButton = screen.getByText('Run Code')
@@ -108,6 +149,10 @@ describe('CodeEditor', () => {
       render(<MockedCodeEditor sessionId="test-session-123" />)
     })
     
+    await waitFor(() => {
+      expect(screen.queryByText('Loading session...')).not.toBeInTheDocument()
+    })
+    
     const runButton = screen.getByText('Run Code')
     
     await act(async () => {
@@ -121,14 +166,20 @@ describe('CodeEditor', () => {
     })
   })
 
-  it('copies link to clipboard when copy button is clicked', () => {
+  it('copies link to clipboard when copy button is clicked', async () => {
     const mockWriteText = vi.fn()
     global.navigator.clipboard = {
       writeText: mockWriteText,
     }
     global.alert = vi.fn()
 
-    render(<MockedCodeEditor sessionId="test-session-123" />)
+    await act(async () => {
+      render(<MockedCodeEditor sessionId="test-session-123" />)
+    })
+    
+    await waitFor(() => {
+      expect(screen.queryByText('Loading session...')).not.toBeInTheDocument()
+    })
     
     const copyButton = screen.getByText('Copy Link')
     copyButton.click()
