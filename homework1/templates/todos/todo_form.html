@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - TODO{% endblock %}
+
+{% block header %}{{ title }}{% endblock %}
+
+{% block content %}
+<form method="post">
+    {% csrf_token %}
+    
+    <div class="form-group">
+        <label for="{{ form.title.id_for_label }}">Title</label>
+        {{ form.title }}
+        {% if form.title.errors %}
+            <div style="color: #d32f2f; font-size: 0.85rem; margin-top: 0.25rem;">{{ form.title.errors }}</div>
+        {% endif %}
+    </div>
+    
+    <div class="form-group">
+        <label for="{{ form.description.id_for_label }}">Description</label>
+        {{ form.description }}
+        {% if form.description.errors %}
+            <div style="color: #d32f2f; font-size: 0.85rem; margin-top: 0.25rem;">{{ form.description.errors }}</div>
+        {% endif %}
+    </div>
+    
+    <div class="form-group">
+        <label for="{{ form.due_date.id_for_label }}">Due Date</label>
+        {{ form.due_date }}
+        {% if form.due_date.errors %}
+            <div style="color: #d32f2f; font-size: 0.85rem; margin-top: 0.25rem;">{{ form.due_date.errors }}</div>
+        {% endif %}
+    </div>
+    
+    <div class="form-group">
+        <div class="checkbox-group">
+            {{ form.is_resolved }}
+            <label for="{{ form.is_resolved.id_for_label }}" style="margin: 0;">Mark as resolved</label>
+        </div>
+        {% if form.is_resolved.errors %}
+            <div style="color: #d32f2f; font-size: 0.85rem; margin-top: 0.25rem;">{{ form.is_resolved.errors }}</div>
+        {% endif %}
+    </div>
+    
+    <div class="form-actions">
+        <a href="{% url 'todos:home' %}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+</form>
+{% endblock %}
