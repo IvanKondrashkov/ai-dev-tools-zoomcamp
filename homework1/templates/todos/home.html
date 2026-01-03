@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - TODO{% endblock %}
+
+{% block header %}
+TODO
+<a href="{% url 'todos:create' %}" class="btn btn-primary" style="float: right; margin-top: -0.5rem;">+ New</a>
+{% endblock %}
+
+{% block content %}
+{% if todos %}
+    <div class="todo-list">
+        {% for todo in todos %}
+            <div class="todo-item {% if todo.is_resolved %}resolved{% elif todo.is_overdue %}overdue{% endif %}">
+                <div class="todo-header">
+                    <div class="todo-title {% if todo.is_resolved %}completed{% endif %}">
+                        {{ todo.title }}
+                    </div>
+                    {% if todo.is_resolved %}
+                        <span style="font-size: 0.75rem; color: #4caf50;">✓</span>
+                    {% elif todo.is_overdue %}
+                        <span style="font-size: 0.75rem; color: #d32f2f;">!</span>
+                    {% endif %}
+                </div>
+                
+                {% if todo.description %}
+                    <div style="color: #666; font-size: 0.9rem; margin: 0.5rem 0;">
+                        {{ todo.description|truncatewords:20 }}
+                    </div>
+                {% endif %}
+                
+                {% if todo.due_date %}
+                    <div class="todo-meta">
+                        Due: {{ todo.due_date|date:"M d, Y H:i" }}
+                    </div>
+                {% endif %}
+                
+                <div class="todo-actions">
+                    <a href="{% url 'todos:edit' todo.pk %}" class="btn btn-secondary btn-small">Edit</a>
+                    <a href="{% url 'todos:toggle' todo.pk %}" class="btn btn-secondary btn-small">
+                        {% if todo.is_resolved %}Unresolve{% else %}Resolve{% endif %}
+                    </a>
+                    <a href="{% url 'todos:delete' todo.pk %}" class="btn btn-danger btn-small">Delete</a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">
+        <h2>No TODOs</h2>
+        <p>Create your first TODO to get started.</p>
+        <a href="{% url 'todos:create' %}" class="btn btn-primary" style="margin-top: 1rem;">Create TODO</a>
+    </div>
+{% endif %}
+{% endblock %}

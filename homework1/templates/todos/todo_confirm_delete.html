@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete TODO{% endblock %}
+
+{% block header %}Delete TODO{% endblock %}
+
+{% block content %}
+<p style="margin-bottom: 1rem;">Are you sure you want to delete this TODO?</p>
+
+<div style="background: #fff; border: 1px solid #e0e0e0; border-radius: 4px; padding: 1rem; margin-bottom: 1.5rem;">
+    <div style="font-weight: 500; margin-bottom: 0.5rem;">{{ todo.title }}</div>
+    {% if todo.description %}
+        <div style="color: #666; font-size: 0.9rem;">{{ todo.description }}</div>
+    {% endif %}
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="form-actions">
+        <a href="{% url 'todos:home' %}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-danger">Delete</button>
+    </div>
+</form>
+{% endblock %}
