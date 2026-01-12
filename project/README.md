@@ -6,7 +6,7 @@ A real-time collaborative platform for HR teams to evaluate and review resumes. 
 
 This project follows a **frontend-first development approach**:
 
-1. **Frontend** - Built first with mock data
+1. **Frontend** - Built first, connects directly to backend API
 2. **OpenAPI Specs** - API contract defined in `openapi.yaml`
 3. **Backend** - Implemented to match the OpenAPI specification
 
@@ -39,34 +39,41 @@ This project follows a **frontend-first development approach**:
 
 ```
 project/
-├── frontend/              # Step 1: Frontend with mocks
+├── frontend/              # Frontend React application
 │   ├── src/
 │   │   ├── api/
-│   │   │   ├── resumes.js    # API client (supports mocks)
-│   │   │   └── mock.js        # Mock data for development
-│   │   └── components/
+│   │   │   └── resumes.js    # API client
+│   │   ├── components/        # React components
+│   │   └── tests/             # Frontend tests
 │   └── package.json
-├── openapi.yaml           # Step 2: API specification
-├── backend/               # Step 3: Backend implementation
+├── openapi.yaml           # API specification
+├── backend/               # Backend FastAPI application
 │   ├── app/
 │   │   ├── main.py
 │   │   ├── models.py
 │   │   ├── schemas.py
-│   │   └── routers/
+│   │   ├── database.py
+│   │   └── routers/           # API routers
+│   ├── tests/                 # Backend tests
 │   └── pyproject.toml
 └── infra/                 # Infrastructure configuration
-    ├── docker-compose.yml # Docker Compose configuration
-    └── init-db/           # Database initialization scripts
-        └── 01-init.sql    # SQL initialization script
+    ├── docker-compose.yml  # Docker Compose configuration
+    ├── Dockerfile.backend  # Backend Dockerfile for Render
+    ├── Dockerfile.frontend # Frontend Dockerfile for Render
+    ├── nginx.render.conf   # Nginx config for SPA routing
+    └── init-db/            # Database initialization scripts
+        ├── 01-create-table-resumes.sql
+        ├── 02-create-table-evaluations.sql
+        └── 03-create-table-chat-messages.sql
 ```
 
 ## Getting Started
 
-### Step 1: Frontend Development (with Mocks)
+### Step 1: Frontend Development
 
 1. Navigate to frontend directory:
 ```bash
-cd frontend
+cd project/frontend
 ```
 
 2. Install dependencies:
@@ -74,16 +81,14 @@ cd frontend
 npm install
 ```
 
-3. Start the development server with mock data:
+3. Start the development server:
 ```bash
 npm run dev
 ```
 
-The frontend connects to the backend API. Make sure the backend is running before starting the frontend.
+**Note:** The frontend requires the backend to be running. Make sure the backend is started before accessing the frontend.
 
 4. Open http://localhost:5173 in your browser
-
-**Note:** The frontend requires the backend to be running. Make sure the backend is started before accessing the frontend.
 
 ### Step 2: OpenAPI Specification
 
@@ -104,15 +109,13 @@ Or use tools like Swagger Editor to visualize it.
 
 1. Navigate to backend directory:
 ```bash
-cd backend
+cd project/backend
 ```
 
 2. Install dependencies using `uv`:
 ```bash
 uv sync
 ```
-
-The `uv.toml` configuration file is already set up to suppress hardlink warnings on Windows.
 
 3. Create a `.env` file (optional, for custom database configuration):
 ```bash
@@ -165,10 +168,12 @@ Access:
 
 Note: Database initialization scripts in `infra/init-db/` will run automatically on first start.
 
-### Option 2: Frontend Only (with Mocks)
+### Option 2: Frontend Only
+
+**Note:** Frontend requires backend to be running. Use Option 1 for full stack.
 
 ```bash
-cd frontend
+cd project/frontend
 npm install
 npm run dev
 ```
@@ -199,39 +204,66 @@ The project includes configuration for deploying to Render.com:
 
 ### Files for Render Deployment
 
-- `render.yaml` - Render service configuration
-- `infra/Dockerfile.backend` - Backend Dockerfile for Render
-- `infra/Dockerfile.frontend` - Frontend Dockerfile for Render
+- `render.yaml` - Render service configuration (located in repository root)
+- `project/infra/Dockerfile.backend` - Backend Dockerfile for Render
+- `project/infra/Dockerfile.frontend` - Frontend Dockerfile for Render
+- `project/infra/nginx.render.conf` - Nginx config for SPA routing
 - `.dockerignore` - Files to exclude from Docker builds
 
 ### Deploy Steps
 
 1. Push your code to GitHub
 2. Connect your repository to Render
-3. Render will automatically detect `render.yaml` and create services
+3. Render will automatically detect `render.yaml` (in repository root) and create services
 4. Services will be deployed:
    - `resume-review-db` - PostgreSQL database
    - `resume-review-backend` - Backend API service
    - `resume-review-frontend` - Frontend web service
+
+**Note:** Render generates URLs automatically. Backend URL format: `service-name-xxxxx.onrender.com`. Update `VITE_API_URL` and `VITE_WS_URL` in `render.yaml` to match your actual backend URL from Render Dashboard.
 
 ### Environment Variables
 
 Backend automatically uses:
 - `DATABASE_URL` - From Render database connection
 - `CORS_ORIGINS` - Set to frontend URL
+- `UPLOAD_DIR` - Set to `/app/uploads`
 - `PORT` - Set by Render (defaults to 8000)
 
 Frontend automatically uses:
-- `VITE_WS_URL` - Backend WebSocket host (for chat)
-- `VITE_API_URL` - Not set by default (uses relative paths `/api` through Nginx proxy)
+- `VITE_API_URL` - Backend API URL (set in `render.yaml`)
+- `VITE_WS_URL` - Backend WebSocket host (set in `render.yaml`)
 
 ## Development Workflow
 
-1. **Frontend First**: Develop UI/UX with mock data
+1. **Frontend First**: Develop UI/UX, connects directly to backend API
 2. **Define API Contract**: Create/update `openapi.yaml`
 3. **Implement Backend**: Build backend to match the spec
 4. **Integration**: Connect frontend to real backend
 5. **Testing**: Test end-to-end functionality
+
+## CI/CD
+
+The project includes GitHub Actions workflow for automated testing and deployment:
+
+- **Location**: `.github/workflows/ci-cd.yml`
+- **Triggers**: Push and Pull Requests to `main`/`master` branches
+- **Jobs**:
+  - Frontend build and tests
+  - Backend unit tests
+  - Backend integration tests (with PostgreSQL)
+  - Docker image builds
+  - Automatic deployment to Render (on push to main/master)
+
+### Setup CI/CD
+
+1. Add GitHub Secrets:
+   - `RENDER_DEPLOY_HOOK_BACKEND` - Deploy Hook URL from Render Dashboard (backend service)
+   - `RENDER_DEPLOY_HOOK_FRONTEND` - Deploy Hook URL from Render Dashboard (frontend service)
+
+2. Get Deploy Hook URLs:
+   - Go to Render Dashboard → Service → Settings → Manual Deploy Hook
+   - Copy the URL and add it to GitHub Secrets
 
 ## Testing
 
@@ -239,26 +271,26 @@ Frontend automatically uses:
 
 #### Unit Tests
 ```bash
-cd backend
+cd project/backend
 uv sync --extra test
 uv run pytest tests/unit -v
 ```
 
 #### Integration Tests
 ```bash
-cd backend
+cd project/backend
 uv run pytest tests/integration -v
 ```
 
 #### All Tests
 ```bash
-cd backend
+cd project/backend
 uv run pytest tests/ -v
 ```
 
 #### With Coverage
 ```bash
-cd backend
+cd project/backend
 uv run pytest tests/ --cov=app --cov-report=html
 ```
 
@@ -266,27 +298,42 @@ uv run pytest tests/ --cov=app --cov-report=html
 
 #### Run Tests
 ```bash
-cd frontend
+cd project/frontend
 npm install
 npm test
 ```
 
 #### Run Tests with UI
 ```bash
-cd frontend
+cd project/frontend
 npm run test:ui
 ```
 
 #### Run Tests with Coverage
 ```bash
-cd frontend
+cd project/frontend
 npm run test:coverage
 ```
 
 #### Watch Mode
 ```bash
-cd frontend
+cd project/frontend
 npm test -- --watch
+```
+
+### Using Makefile
+
+You can also use the Makefile for convenience:
+
+```bash
+# Run all tests
+make test
+
+# Run backend tests only
+make test-backend
+
+# Run frontend tests only
+make test-frontend
 ```
 
 ## Deployment
