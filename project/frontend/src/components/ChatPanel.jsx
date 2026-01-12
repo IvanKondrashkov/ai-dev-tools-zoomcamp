@@ -1,8 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { mockChatApi } from '../api/mock.js'
 import './ChatPanel.css'
-
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true' || import.meta.env.VITE_API_URL === undefined
 
 const ChatPanel = ({ resumeId }) => {
   const [messages, setMessages] = useState([])
@@ -10,36 +7,45 @@ const ChatPanel = ({ resumeId }) => {
   const [username, setUsername] = useState('')
   const [ws, setWs] = useState(null)
   const [connected, setConnected] = useState(false)
+  const [isJoined, setIsJoined] = useState(false)
   const messagesEndRef = useRef(null)
-  const usernameSetRef = useRef(false)
 
+  // Load messages when component mounts or resumeId changes
   useEffect(() => {
-    // Get or set username from localStorage
-    const savedUsername = localStorage.getItem('chat_username')
-    if (savedUsername) {
-      setUsername(savedUsername)
-      usernameSetRef.current = true
-    }
-
-    // Load existing messages
+    console.log('ChatPanel mounted/updated for resume:', resumeId)
     loadMessages()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeId])
 
-    // In mock mode, simulate connection
-    if (USE_MOCK) {
-      setConnected(true)
+  // Initialize state when component mounts or resumeId changes
+  useEffect(() => {
+    console.log('Initializing ChatPanel for resume:', resumeId)
+    
+    // Reset WebSocket connection when resumeId changes
+    if (ws) {
+      ws.close()
+      setWs(null)
     }
-
+    setConnected(false)
+    setIsJoined(false)
+    
+    // Always start with Join form - don't auto-join based on sessionStorage
+    // This ensures each tab/window requires explicit join action
+    // sessionStorage may be shared when duplicating tabs
+    setUsername('')
+    
     // Cleanup on unmount
     return () => {
       if (ws) {
         ws.close()
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeId])
 
-  // Connect to WebSocket when username is set and not using mock
+  // Connect to WebSocket when username is set
   useEffect(() => {
-    if (USE_MOCK || !usernameSetRef.current || !resumeId || !username.trim()) return
+    if (!isJoined || !resumeId || !username.trim()) return
 
     // Build WebSocket URL
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -89,7 +95,7 @@ const ChatPanel = ({ resumeId }) => {
         websocket.close()
       }
     }
-  }, [resumeId, username])
+  }, [resumeId, username, isJoined])
 
   useEffect(() => {
     scrollToBottom()
@@ -97,17 +103,26 @@ const ChatPanel = ({ resumeId }) => {
 
   const loadMessages = async () => {
     try {
-      if (USE_MOCK) {
-        const data = await mockChatApi.getMessages(resumeId)
-        setMessages(data || [])
-      } else {
-        const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
-        const response = await fetch(`${apiBaseUrl}/chat/resume/${resumeId}`)
-        const data = await response.json()
-        setMessages(data || [])
+      console.log('Loading messages for resume:', resumeId)
+      // Use relative path (works with Nginx proxy on Render)
+      // Or use VITE_API_URL if set (for direct backend access)
+      const apiBaseUrl = import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.trim() !== ''
+        ? import.meta.env.VITE_API_URL
+        : '/api'
+      const url = `${apiBaseUrl}/chat/resume/${resumeId}`
+      console.log('Fetching messages from:', url)
+      const response = await fetch(url)
+      if (!response.ok) {
+        console.error('Failed to load messages:', response.status, response.statusText)
+        setMessages([])
+        return
       }
+      const data = await response.json()
+      setMessages(data || [])
+      console.log('Loaded messages from API:', data?.length || 0, 'messages')
     } catch (err) {
       console.error('Failed to load messages:', err)
+      setMessages([])
     }
   }
 
@@ -118,10 +133,14 @@ const ChatPanel = ({ resumeId }) => {
   const handleUsernameSubmit = (e) => {
     e.preventDefault()
     if (username.trim()) {
-      localStorage.setItem('chat_username', username.trim())
-      usernameSetRef.current = true
-      // Force re-render to trigger WebSocket connection
-      setUsername(username.trim())
+      const trimmedUsername = username.trim()
+      // Save username to sessionStorage (for persistence within this tab)
+      // But don't rely on it for auto-join - always require explicit join action
+      sessionStorage.setItem('chat_username', trimmedUsername)
+      sessionStorage.setItem(`chat_joined_${resumeId}`, 'true')
+      setUsername(trimmedUsername)
+      setIsJoined(true) // This will trigger re-render and WebSocket connection
+      console.log('User joined chat:', trimmedUsername)
     }
   }
 
@@ -133,29 +152,40 @@ const ChatPanel = ({ resumeId }) => {
       return
     }
 
-    if (USE_MOCK) {
-      // Use mock API
-      const message = await mockChatApi.sendMessage(resumeId, username.trim(), newMessage.trim())
-      setMessages((prev) => [...prev, message])
-      setNewMessage('')
-    } else {
-      // Use real WebSocket
-      if (!ws || !connected) return
-      ws.send(
-        JSON.stringify({
-          username: username.trim(),
-          message: newMessage.trim(),
-        })
-      )
-      setNewMessage('')
-    }
+    if (!ws || !connected) return
+    ws.send(
+      JSON.stringify({
+        username: username.trim(),
+        message: newMessage.trim(),
+      })
+    )
+    setNewMessage('')
   }
 
-  if (!usernameSetRef.current) {
+  // Show Join form if user hasn't joined yet
+  if (!isJoined) {
     return (
       <div className="chat-panel">
         <div className="panel-header">
           <h3>Chat</h3>
+        </div>
+        <div className="chat-messages">
+          {messages.length === 0 ? (
+            <p className="empty-text">No messages yet. Join to start chatting!</p>
+          ) : (
+            messages.map((message) => (
+              <div key={message.id} className="chat-message">
+                <div className="message-header">
+                  <span className="message-username">{message.username}</span>
+                  <span className="message-time">
+                    {new Date(message.created_at).toLocaleTimeString()}
+                  </span>
+                </div>
+                <p className="message-text">{message.message}</p>
+              </div>
+            ))
+          )}
+          <div ref={messagesEndRef} />
         </div>
         <form className="username-form" onSubmit={handleUsernameSubmit}>
           <input
@@ -164,6 +194,7 @@ const ChatPanel = ({ resumeId }) => {
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Enter your name to join chat"
             required
+            autoFocus
           />
           <button type="submit">Join</button>
         </form>
@@ -175,11 +206,9 @@ const ChatPanel = ({ resumeId }) => {
     <div className="chat-panel">
       <div className="panel-header">
         <h3>Chat</h3>
-        {!USE_MOCK && (
-          <span className={`connection-status ${connected ? 'connected' : 'disconnected'}`}>
-            {connected ? '●' : '○'}
-          </span>
-        )}
+        <span className={`connection-status ${connected ? 'connected' : 'disconnected'}`}>
+          {connected ? '●' : '○'}
+        </span>
       </div>
 
       <div className="chat-messages">
@@ -212,9 +241,9 @@ const ChatPanel = ({ resumeId }) => {
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder="Type a message..."
-          disabled={!USE_MOCK && !connected}
+          disabled={!connected}
         />
-        <button type="submit" disabled={(!USE_MOCK && !connected) || !newMessage.trim()}>
+        <button type="submit" disabled={!connected || !newMessage.trim()}>
           Send
         </button>
       </form>

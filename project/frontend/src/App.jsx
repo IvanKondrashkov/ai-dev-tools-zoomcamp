@@ -1,8 +1,13 @@
-import { useState } from 'react'
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Link, Navigate, useParams } from 'react-router-dom'
 import ResumeList from './components/ResumeList'
 import ResumeDetail from './components/ResumeDetail'
 import './App.css'
+
+// Component to redirect from /chat/resume/:id to /resume/:id
+const ChatRedirect = () => {
+  const { id } = useParams()
+  return <Navigate to={`/resume/${id}`} replace />
+}
 
 function App() {
   return (
@@ -21,6 +26,8 @@ function App() {
             <Routes>
               <Route path="/" element={<ResumeList />} />
               <Route path="/resume/:id" element={<ResumeDetail />} />
+              {/* Redirect old chat route to resume detail page */}
+              <Route path="/chat/resume/:id" element={<ChatRedirect />} />
             </Routes>
           </div>
         </main>

@@ -1,0 +1,66 @@
+# Git
+.git
+.gitignore
+.github
+
+# Documentation
+*.md
+LICENSE
+
+# Environment
+.env
+.env.*
+
+# Node
+node_modules
+npm-debug.log
+frontend/node_modules
+frontend/dist
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv
+*.db
+*.sqlite
+dist
+build
+*.egg-info
+.pytest_cache
+.coverage
+htmlcov/
+backend/__pycache__
+backend/.pytest_cache
+backend/.venv
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Test
+coverage
+.nyc_output
+
+# Infra
+infra/docker-compose.yml
+infra/init-db/
+
+# Scripts (if any)
+backend/build.sh
+backend/start.sh
+

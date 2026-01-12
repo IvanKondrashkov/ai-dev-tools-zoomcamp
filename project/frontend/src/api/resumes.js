@@ -1,10 +1,19 @@
 import axios from 'axios'
-import * as mockApi from './mock.js'
 
-// Use mock API if VITE_USE_MOCK is true or if API is not available
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true' || import.meta.env.VITE_API_URL === undefined
+// On Render, use relative paths (Nginx will proxy /api to backend)
+// For local development, use VITE_API_URL if set, otherwise default to localhost
+const getApiBaseUrl = () => {
+  // If VITE_API_URL is explicitly set and not empty, use it (for direct backend access)
+  const viteApiUrl = import.meta.env.VITE_API_URL
+  if (viteApiUrl && viteApiUrl.trim() !== '') {
+    return viteApiUrl
+  }
+  // Otherwise, use relative path (works with Nginx proxy on Render)
+  // This will be '/api' which Nginx will proxy to backend
+  return '/api'
+}
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+const API_BASE_URL = getApiBaseUrl()
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -13,8 +22,8 @@ const api = axios.create({
   },
 })
 
-// Real API implementation
-const realResumeApi = {
+// API implementation
+export const resumeApi = {
   // Get all resumes
   getAll: async () => {
     const response = await api.get('/resumes/')
@@ -57,8 +66,8 @@ const realResumeApi = {
   },
 }
 
-// Real API implementation
-const realEvaluationApi = {
+// API implementation
+export const evaluationApi = {
   // Get all evaluations for a resume
   getByResumeId: async (resumeId) => {
     const response = await api.get(`/evaluations/resume/${resumeId}`)
@@ -71,10 +80,6 @@ const realEvaluationApi = {
     return response.data
   },
 }
-
-// Export either mock or real API based on configuration
-export const resumeApi = USE_MOCK ? mockApi.mockResumeApi : realResumeApi
-export const evaluationApi = USE_MOCK ? mockApi.mockEvaluationApi : realEvaluationApi
 
 export default api
 

@@ -154,7 +154,7 @@ paths:
             type: integer
       responses:
         '204':
-          description: Resume deleted successfully
+          description: Resume deleted successfully (no content)
         '404':
           description: Resume not found
           content:

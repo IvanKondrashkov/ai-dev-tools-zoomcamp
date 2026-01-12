@@ -79,14 +79,11 @@ npm install
 npm run dev
 ```
 
-The frontend will use mock data by default (when `VITE_API_URL` is not set). To use mock data explicitly:
-```bash
-VITE_USE_MOCK=true npm run dev
-```
+The frontend connects to the backend API. Make sure the backend is running before starting the frontend.
 
 4. Open http://localhost:5173 in your browser
 
-The frontend works independently with mock data, allowing you to develop and test the UI without a backend.
+**Note:** The frontend requires the backend to be running. Make sure the backend is started before accessing the frontend.
 
 ### Step 2: OpenAPI Specification
 
@@ -140,21 +137,17 @@ uv run uvicorn app.main:app --reload
 6. The API will be available at http://localhost:8000
 7. API documentation (Swagger UI) at http://localhost:8000/docs
 
-### Running Frontend with Real Backend
+### Running Frontend
 
-Once the backend is running, update frontend environment:
+The frontend connects to the backend API. Make sure the backend is running before starting the frontend.
 
-1. Create `frontend/.env`:
+**Optional: Create `frontend/.env` to customize API URLs:**
 ```env
 VITE_API_URL=http://localhost:8000/api
 VITE_WS_URL=localhost:8000
 ```
 
-2. Restart the frontend dev server:
-```bash
-cd frontend
-npm run dev
-```
+**Note:** If backend is not running, API calls will fail. Make sure backend is running on port 8000.
 
 ## Using Docker
 
@@ -180,31 +173,57 @@ npm install
 npm run dev
 ```
 
-## Frontend Routes
-
-The frontend uses React Router for client-side routing (no `/api` prefix):
-
-- `http://localhost:3000/` or `http://localhost:5173/` - Resume list page
-- `http://localhost:3000/resume/{id}` or `http://localhost:5173/resume/{id}` - Resume detail page with chat and evaluations
-
 ## API Endpoints
 
 All endpoints are documented in `openapi.yaml`. Backend API endpoints use `/api` prefix:
 
 ### Resumes
 - `GET /api/resumes/` - List all resumes
-- `GET /api/resumes/{id}` - Get a specific resume
+- `GET /api/resumes/{resume_id}` - Get a specific resume
 - `POST /api/resumes/` - Upload a new resume
-- `PUT /api/resumes/{id}` - Update a resume
-- `DELETE /api/resumes/{id}` - Delete a resume
+- `PUT /api/resumes/{resume_id}` - Update a resume
+- `DELETE /api/resumes/{resume_id}` - Delete a resume
 
 ### Evaluations
 - `GET /api/evaluations/resume/{resume_id}` - Get all evaluations for a resume
+- `GET /api/evaluations/{evaluation_id}` - Get a specific evaluation by ID
 - `POST /api/evaluations/` - Create a new evaluation
 
 ### Chat
 - `GET /api/chat/resume/{resume_id}` - Get chat messages for a resume
 - `WS /api/chat/ws/{resume_id}` - WebSocket endpoint for real-time chat
+
+## Deployment to Render
+
+The project includes configuration for deploying to Render.com:
+
+### Files for Render Deployment
+
+- `render.yaml` - Render service configuration
+- `infra/Dockerfile.backend` - Backend Dockerfile for Render
+- `infra/Dockerfile.frontend` - Frontend Dockerfile for Render
+- `.dockerignore` - Files to exclude from Docker builds
+
+### Deploy Steps
+
+1. Push your code to GitHub
+2. Connect your repository to Render
+3. Render will automatically detect `render.yaml` and create services
+4. Services will be deployed:
+   - `resume-review-db` - PostgreSQL database
+   - `resume-review-backend` - Backend API service
+   - `resume-review-frontend` - Frontend web service
+
+### Environment Variables
+
+Backend automatically uses:
+- `DATABASE_URL` - From Render database connection
+- `CORS_ORIGINS` - Set to frontend URL
+- `PORT` - Set by Render (defaults to 8000)
+
+Frontend automatically uses:
+- `VITE_WS_URL` - Backend WebSocket host (for chat)
+- `VITE_API_URL` - Not set by default (uses relative paths `/api` through Nginx proxy)
 
 ## Development Workflow
 
