@@ -1,0 +1,422 @@
+openapi: 3.0.3
+info:
+  title: HR Resume Review Platform API
+  description: |
+    API for HR resume evaluation and review platform with real-time chat.
+    
+    ## WebSocket Support
+    
+    Real-time chat functionality is provided via WebSocket connections:
+    - Endpoint: ws://localhost:8000/api/chat/ws/{resume_id}
+    - Protocol: WebSocket
+    - Message Format (JSON): {"username": "string", "message": "string"}
+    - Response Format (JSON): {"id": integer, "resume_id": integer, "username": "string", "message": "string", "created_at": "datetime"}
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000/api
+    description: Local development server
+  - url: https://api.example.com/api
+    description: Production server
+
+paths:
+  /resumes:
+    get:
+      summary: List all resumes
+      tags:
+        - Resumes
+      parameters:
+        - name: skip
+          in: query
+          description: Number of records to skip
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          description: Maximum number of records to return
+          required: false
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeListResponse'
+    
+    post:
+      summary: Upload a new resume
+      tags:
+        - Resumes
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Resume file (PDF or TXT)
+      responses:
+        '201':
+          description: Resume created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeResponse'
+        '400':
+          description: Bad request (invalid file type or missing filename)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /resumes/{resume_id}:
+    get:
+      summary: Get a specific resume
+      tags:
+        - Resumes
+      parameters:
+        - name: resume_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeResponse'
+        '404':
+          description: Resume not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    put:
+      summary: Update a resume
+      tags:
+        - Resumes
+      parameters:
+        - name: resume_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: New resume file (PDF or TXT). Optional - if not provided, resume metadata remains unchanged.
+      responses:
+        '200':
+          description: Resume updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeResponse'
+        '400':
+          description: Bad request (invalid file type)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resume not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    delete:
+      summary: Delete a resume
+      tags:
+        - Resumes
+      parameters:
+        - name: resume_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Resume deleted successfully (no content)
+        '404':
+          description: Resume not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /evaluations:
+    post:
+      summary: Create a new evaluation
+      tags:
+        - Evaluations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvaluationCreate'
+      responses:
+        '201':
+          description: Evaluation created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationResponse'
+        '404':
+          description: Resume not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /evaluations/resume/{resume_id}:
+    get:
+      summary: Get all evaluations for a resume
+      tags:
+        - Evaluations
+      parameters:
+        - name: resume_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EvaluationResponse'
+        '404':
+          description: Resume not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /evaluations/{evaluation_id}:
+    get:
+      summary: Get a specific evaluation
+      tags:
+        - Evaluations
+      parameters:
+        - name: evaluation_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationResponse'
+        '404':
+          description: Evaluation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /chat/resume/{resume_id}:
+    get:
+      summary: Get chat messages for a resume
+      tags:
+        - Chat
+      parameters:
+        - name: resume_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChatMessageResponse'
+        '404':
+          description: Resume not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+tags:
+  - name: Resumes
+    description: Resume management operations (CRUD)
+  - name: Evaluations
+    description: Resume evaluation and rating operations
+  - name: Chat
+    description: Real-time chat operations (REST API and WebSocket)
+
+components:
+  schemas:
+    ResumeResponse:
+      type: object
+      required:
+        - id
+        - filename
+        - original_filename
+        - file_type
+        - file_path
+        - created_at
+      properties:
+        id:
+          type: integer
+          description: Resume ID
+        filename:
+          type: string
+          description: Stored filename
+        original_filename:
+          type: string
+          description: Original filename
+        file_type:
+          type: string
+          enum: [pdf, txt]
+          description: File type
+        file_path:
+          type: string
+          description: Path to stored file
+        content:
+          type: string
+          nullable: true
+          description: Extracted text content
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last update timestamp
+
+    ResumeListResponse:
+      type: object
+      required:
+        - resumes
+        - total
+      properties:
+        resumes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResumeResponse'
+        total:
+          type: integer
+          description: Total number of resumes
+
+    EvaluationCreate:
+      type: object
+      required:
+        - resume_id
+        - rating
+        - evaluator_name
+      properties:
+        resume_id:
+          type: integer
+          description: ID of the resume being evaluated
+        rating:
+          type: number
+          format: float
+          minimum: 1.0
+          maximum: 5.0
+          description: Rating from 1.0 to 5.0
+        comment:
+          type: string
+          nullable: true
+          description: Optional comment
+        evaluator_name:
+          type: string
+          description: Name of the evaluator
+
+    EvaluationResponse:
+      type: object
+      required:
+        - id
+        - resume_id
+        - rating
+        - evaluator_name
+        - created_at
+      properties:
+        id:
+          type: integer
+          description: Evaluation ID
+        resume_id:
+          type: integer
+          description: ID of the resume
+        rating:
+          type: number
+          format: float
+          description: Rating from 1.0 to 5.0
+        comment:
+          type: string
+          nullable: true
+          description: Optional comment
+        evaluator_name:
+          type: string
+          description: Name of the evaluator
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+
+    ChatMessageResponse:
+      type: object
+      required:
+        - id
+        - resume_id
+        - username
+        - message
+        - created_at
+      properties:
+        id:
+          type: integer
+          description: Message ID
+        resume_id:
+          type: integer
+          description: ID of the resume
+        username:
+          type: string
+          description: Username of the sender
+        message:
+          type: string
+          description: Message content
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+
+    Error:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Error message
+

@@ -1,0 +1,40 @@
+databases:
+  # PostgreSQL Database
+  - name: resume-review-db
+    databaseName: resume_review
+    user: resume_review
+    plan: free
+
+services:
+  # Backend Web Service (Docker)
+  - type: web
+    name: resume-review-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./project/infra/Dockerfile.backend
+    dockerContext: ./project
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: resume-review-db
+          property: connectionString
+      - key: CORS_ORIGINS
+        value: https://resume-review-frontend.onrender.com
+      - key: UPLOAD_DIR
+        value: /app/uploads
+
+  # Frontend (Docker)
+  - type: web
+    name: resume-review-frontend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./project/infra/Dockerfile.frontend
+    dockerContext: ./project
+    envVars:
+      # Direct backend URL (frontend will call backend directly, no nginx proxy)
+      # Update these URLs to match your actual backend URL from Render Dashboard
+      - key: VITE_API_URL
+        value: https://resume-review-backend-sz1s.onrender.com/api
+      - key: VITE_WS_URL
+        value: resume-review-backend-sz1s.onrender.com
+

@@ -1,0 +1,38 @@
+# Backend Dockerfile for Render deployment
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+RUN pip install uv
+
+# Copy backend dependency files
+COPY backend/pyproject.toml backend/uv.lock* ./
+
+# Install Python dependencies
+# Use --frozen only if uv.lock exists, otherwise sync normally
+RUN if [ -f uv.lock ]; then \
+      uv sync --frozen --no-cache; \
+    else \
+      uv sync --no-cache; \
+    fi
+
+# Copy application code
+COPY backend/ ./
+
+# Create uploads directory
+RUN mkdir -p /app/uploads
+
+# Expose port (Render will set PORT env variable)
+EXPOSE 8000
+
+# Run the application
+# Use $PORT from Render environment, default to 8000
+CMD sh -c "uv run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+
